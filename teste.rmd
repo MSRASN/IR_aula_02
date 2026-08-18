@@ -1,0 +1,450 @@
+---
+title: "Guia de Aprendizado Prático: Manipulação e Transformação de Dados com Tidyverse"
+author: "Análise de Dados de Alunos"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## Introdução e Configuração de Ambiente
+
+Este documento serve como um guia estruturado e interativo para o aprendizado prático das ferramentas do ecossistema `tidyverse` e leitura de planilhas com `readxl`. Cada comando é apresentado a partir de um problema analítico concreto (pergunta) seguido de sua resolução direta em código (resposta).
+
+---
+
+### Pergunta 1: Como instalar (caso necessário) e carregar os pacotes essenciais do R para ciência de dados e importação de planilhas Excel?
+
+**Resposta:**
+Para carregar as ferramentas de manipulação de dados (`tidyverse`) e de leitura de arquivos Excel (`readxl`), utilizamos os comandos abaixo. Se for a primeira execução em sua máquina, descomente as linhas de instalação.
+
+```{r}
+# install.packages("tidyverse")
+# install.packages("readxl")
+
+library(tidyverse)
+library(readxl)
+```
+
+---
+
+## PARTE 1: Importação e Exploração Inicial
+
+### Pergunta 2: Como importar dados de diferentes formatos (TXT delimitado por espaços, CSV e Excel) tratando valores ausentes (`NA`) de forma consistente?
+
+**Resposta:**
+Utilizamos as funções `read_delim()`, `read_csv()` e `read_excel()`. O argumento `na = c("NA", "")` garante que células em branco ou preenchidas com a sigla "NA" sejam interpretadas pelo R corretamente como valores ausentes (`NA`).
+
+```{r}
+# Importação dos dados tratando valores ausentes de forma consistente
+alunos <- read_delim("dados/alunos.txt", delim = " ", na = c("NA", ""), show_col_types = FALSE)
+desempenho <- read_csv("dados/desempenho.csv", na = c("NA", ""), show_col_types = FALSE)
+pagamentos <- read_excel("dados/pagamentos.xlsx")
+```
+
+---
+
+### Pergunta 3: Como inspecionar rapidamente a estrutura de tipos de dados das colunas e abrir visualizações interativas das tabelas carregadas?
+
+**Resposta:**
+A função `glimpse()` oferece um resumo dos tipos de dados e das primeiras observações de cada coluna. Para abrir a tabela em formato de planilha interativa dentro do RStudio, utilizamos `View()`.
+
+```{r, eval=FALSE}
+# Visualização estrutural rápida das variáveis carregadas na memória
+glimpse(alunos)
+glimpse(desempenho)
+glimpse(pagamentos)
+
+# Visualização interativa da base (executável no console do RStudio)
+View(alunos)
+View(desempenho)
+View(pagamentos)
+```
+
+---
+
+## PARTE 2: Seleção e Filtragem (`select`, `filter` e `arrange`)
+
+### Pergunta 4: Como selecionar colunas específicas de um conjunto de dados e utilizar funções auxiliares de correspondência de nomes (*tidyselect*)?
+
+**Resposta:**
+A função `select()` permite extrair colunas. Com a função auxiliar `starts_with("fone_")`, selecionamos de forma dinâmica todas as colunas que começam com esse prefixo, além de colunas específicas digitadas manualmente.
+
+```{r}
+# Seleção de colunas usando funções auxiliares (starts_with)
+alunos_contatos <- alunos |>
+  select(id_aluno, nome, starts_with("fone_"), email)
+```
+
+---
+
+### Pergunta 5: Como realizar a filtragem de linhas utilizando múltiplos critérios baseados em operadores lógicos e comparação vetorial?
+
+**Resposta:**
+A função `filter()` restringe as linhas conforme os critérios definidos. O operador `%in%` permite comparar a coluna `estado` com um vetor de siglas simultaneamente.
+
+```{r}
+# Filtragem de linhas com base em múltiplos operadores lógicos e vetoriais
+alunos_ativos_nordeste <- alunos |>
+  filter(
+    situacao == "Ativo",
+    estado %in% c("PE", "PB", "BA"),
+    turno != "Noite"
+  )
+```
+
+---
+
+### Pergunta 6: Como ordenar as observações de um conjunto de dados de forma decrescente com base em uma variável numérica?
+
+**Resposta:**
+A função `arrange()` é utilizada para ordenar as linhas. Para definir a ordenação decrescente, envolvemos a variável de interesse dentro da função `desc()`.
+
+```{r}
+# Ordenação de registros com base em variáveis numéricas (decrescente)
+desempenho_estudo <- desempenho |>
+  arrange(desc(horas_estudo))
+```
+
+---
+
+## PARTE 3: Criação e Modificação de Variáveis (`mutate`)
+
+### Pergunta 7: Como criar uma nova coluna numérica com base em operações matemáticas simples de colunas existentes?
+
+**Resposta:**
+A função `mutate()` adiciona ou modifica colunas. No exemplo abaixo, criamos a variável `media_provas` calculando a média aritmética de duas avaliações.
+
+```{r}
+# Criação de variável numérica simples
+desempenho_media <- desempenho |>
+  mutate(media_provas = (prova_1 + prova_2) / 2)
+```
+
+---
+
+### Pergunta 8: Como criar uma coluna categórica com classificação binária dependente de uma condição lógica?
+
+**Resposta:**
+Combinamos a função `mutate()` com `if_else()`. Se a condição for verdadeira, o R preenche a célula com o primeiro valor; se for falsa, preenche com o segundo.
+
+```{r}
+# Criação de variável categórica binária usando if_else()
+desempenho_categoria <- desempenho_media |>
+  mutate(
+    status_prova = if_else(media_provas >= 7.0, "Acima da Media", "Abaixo da Media")
+  )
+```
+
+---
+
+### Pergunta 9: Como criar uma coluna categórica com múltiplas classificações baseadas em diferentes faixas de valores?
+
+**Resposta:**
+A função `case_when()` é recomendada para múltiplas condições encadeadas de forma limpa e legível. A última linha (`TRUE ~ "Valor"`) define a classificação para os casos remanescentes que não se enquadraram nas condições anteriores.
+
+```{r}
+# Criação de variável categórica múltipla usando case_when()
+desempenho_perfil <- desempenho |>
+  mutate(
+    perfil_horas = case_when(
+      horas_estudo >= 25 ~ "Alta Dedicacao",
+      horas_estudo >= 12 ~ "Dedicacao Regular",
+      TRUE ~ "Dedicacao Baixa"
+    )
+  )
+```
+
+---
+
+## PARTE 4: Agregações e Sumarizações (`group_by` + `summarise` + `slice_max`)
+
+### Pergunta 10: Como calcular métricas agregadas agrupadas por uma variável e remover explicitamente o agrupamento no final?
+
+**Resposta:**
+Utilizamos `group_by()` para agrupar as observações e `summarise()` para calcular as métricas agregadas. O argumento `.groups = "drop"` é utilizado para desfazer o agrupamento, evitando comportamentos imprevistos em análises subsequentes.
+
+```{r}
+# Resumos descritivos agregados com remoção de agrupamentos
+relatorio_cursos <- desempenho |>
+  group_by(curso_id) |>
+  summarise(
+    total_alunos = n(),
+    media_projeto = mean(projeto, na.rm = TRUE),
+    mediana_horas = median(horas_estudo, na.rm = TRUE),
+    desvio_padrao_trabalho = sd(trabalho, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+---
+
+### Pergunta 11: Como calcular apenas a média de uma coluna específica por grupo de forma resumida?
+
+**Resposta:**
+Agrupamos por `curso_id` e aplicamos a função de agregação de média dentro de um `summarise()` simplificado.
+
+```{r}
+desempenho |> 
+  group_by(curso_id) |> 
+  summarise(
+    media_projeto_curso = mean(projeto, na.rm = TRUE)
+  )
+```
+
+---
+
+### Pergunta 12: Como anexar a média geral de cada curso diretamente como uma nova coluna para cada aluno e calcular o seu desvio individual em relação à média do seu grupo?
+
+**Resposta:**
+Quando aplicamos `mutate()` imediatamente após um `group_by()`, as operações de criação de coluna passam a ser calculadas por grupo, permitindo calcular o desvio individual de cada aluno de forma vetorizada.
+
+```{r}
+desempenho |> 
+  group_by(curso_id) |> 
+  mutate(
+    media_projeto_curso = mean(projeto, na.rm = TRUE),
+    desvio_da_media = projeto - media_projeto_curso
+  ) |> 
+  select(id_aluno, curso_id, projeto, media_projeto_curso, desvio_da_media)
+```
+
+---
+
+### Pergunta 13: Como filtrar uma base agrupada para reter apenas os alunos que obtiveram nota no projeto superior à média geral de seu respectivo curso?
+
+**Resposta:**
+Utilizamos a lógica de agrupamento antes da aplicação da função `filter()`. Desta forma, a condição `mean(projeto)` é dinâmica e calcula a média de corte específica de cada grupo.
+
+```{r}
+desempenho |> 
+  group_by(curso_id) |> 
+  mutate(media_projeto_curso = mean(projeto, na.rm = TRUE)) |>
+  filter(projeto > mean(projeto, na.rm = TRUE)) |>
+  select(id_aluno, projeto, media_projeto_curso)
+```
+
+---
+
+### Pergunta 14: Como selecionar o registro que obteve a maior nota de projeto para cada curso, mantendo eventuais empates cadastrados?
+
+**Resposta:**
+A função `slice_max()` seleciona as linhas com os maiores valores de uma coluna por grupo. Por padrão, em caso de empate de notas na primeira colocação, ela retorna todos os registros empatados.
+
+```{r}
+desempenho |> 
+  group_by(curso_id) |> 
+  slice_max(projeto, n = 1) |>
+  arrange(curso_id) |>
+  ungroup()
+```
+
+---
+
+### Pergunta 15: Como selecionar apenas o aluno com a maior nota do projeto por curso, desconsiderando empates de forma arbitrária?
+
+**Resposta:**
+Para impedir o retorno de múltiplos registros empatados na primeira posição, definimos o argumento `with_ties = FALSE` dentro de `slice_max()`.
+
+```{r}
+desempenho |> 
+  group_by(curso_id) |> 
+  slice_max(projeto, n = 1, with_ties = FALSE) |> 
+  arrange(curso_id) |> 
+  ungroup()
+```
+
+---
+
+### Pergunta 16: Em caso de empate na nota do projeto por curso, como desempatar selecionando de forma estruturada quem dedicou mais horas de estudo?
+
+**Resposta:**
+Passamos uma tabela (`tibble()`) contendo as variáveis de ordenação de desempate ordenadamente para o argumento `order_by`. Assim, o R avalia a nota do projeto primeiro e, se houver empate, utiliza a coluna de horas de estudo.
+
+```{r}
+# Em caso de empate na nota do projeto, escolhe quem teve mais horas de estudo
+desempenho |> 
+  group_by(curso_id) |> 
+  slice_max(order_by = tibble(projeto, horas_estudo), n = 1, with_ties = FALSE) |> 
+  arrange(curso_id) |> 
+  ungroup()
+```
+
+---
+
+## PARTE 5: Transformações em Escala (função `across()`)
+
+### Pergunta 17: Como tratar valores ausentes e arredondar notas de múltiplas colunas simultaneamente em um único comando de forma automatizada?
+
+**Resposta:**
+Utilizamos `across()`. No primeiro argumento de `across()`, passamos um vetor de colunas de interesse, e no segundo definimos as transformações a serem aplicadas sobre elas.
+
+```{r}
+# Aplicação de funções em lote para imputar valores ausentes e arredondar notas
+desempenho_tratado <- desempenho |>
+  mutate(
+    across(
+      c(prova_1, prova_2, trabalho, projeto),
+      ~ round(replace_na(.x, 0), 1)
+    )
+  )
+```
+
+---
+
+### Pergunta 18: Como declarar uma função customizada no R com múltiplos argumentos ajustáveis para tratar notas?
+
+**Resposta:**
+Criamos uma função que recebe como entrada o vetor `x`, substitui os nulos, trunca valores excedentes que ultrapassem um valor de teto parametrizado (`pmin()`) e realiza o arredondamento.
+
+```{r}
+# Define a regra customizada fora do pipeline
+tratar_nota_custom <- function(x, teto = 10, padrao_na = 0) {
+  x |> 
+    replace_na(padrao_na) |>  
+    pmin(teto) |>  
+    round(digits = 1)
+}
+```
+
+---
+
+### Pergunta 19: Como aplicar uma função customizada criada por você de forma segura em colunas específicas usando o comando `across()`?
+
+**Resposta:**
+Basta chamar o nome da função personalizada como a instrução de transformação no segundo argumento da função `across()`.
+
+```{r}
+desempenho |> 
+  mutate( 
+    across(c(prova_1, prova_2), tratar_nota_custom)
+  )
+```
+
+---
+
+## PARTE 6: Higienização e Reestruturação de Strings (`tidyr`)
+
+### Pergunta 20: Como separar o conteúdo de uma coluna de texto em colunas independentes utilizando um caractere delimitador literal?
+
+**Resposta:**
+A função `separate()` divide uma coluna baseado em um delimitador. Como o caractere de barra vertical (`|`) é um operador especial em expressões regulares, passamos duas barras de escape (`\\|`) para tratá-lo como delimitador literal.
+
+```{r}
+# separate(): Divisão simples de texto por caractere delimitador
+desempenho_comportamento <- desempenho |>
+  separate(
+    col = comportamento_frequencia,
+    into = c("frequencia_raw", "participacao_raw"),
+    sep = "\\|"
+  )
+```
+
+---
+
+### Pergunta 21: Como desestruturar strings complexas removendo prefixos textuais e realizando divisões de delimitadores sequenciais sem expressões regulares complexas?
+
+**Resposta:**
+Combinamos a função `str_remove()` (para limpar prefixos estáticos como "TRX-") e aplicamos de forma sequencial a função `separate_wider_delim()` passando os diferentes delimitadores textuais ocorridos na string (`_` e `-`).
+
+```{r}
+# Divisão complexa de texto via delimitadores literais sequenciais
+pagamentos_extraidos <- pagamentos |>
+  # 1. Remove o prefixo fixo "TRX-" da string usando stringr (sem regex)
+  mutate(codigo_limpo = str_remove(codigo_transacao, "TRX-")) |>
+  
+  # 2. Divide a coluna pelo separador "_" (gera a data de um lado e o resto do outro)
+  separate_wider_delim(
+    cols = codigo_limpo,
+    delim = "_",
+    names = c("data_pagamento_raw", "metodo_comprovante")
+  ) |>
+  
+  # 3. Divide a segunda parte pelo separador "-" em metodo e comprovante
+  separate_wider_delim(
+    cols = metodo_comprovante,
+    delim = "-",
+    names = c("metodo_pagamento", "comprovante_num")
+  ) |>
+  
+  # 4. Converte a data e limpa colunas auxiliares
+  mutate(data_pagamento = ymd(data_pagamento_raw)) |>
+  select(-data_pagamento_raw)
+```
+
+---
+
+### Pergunta 22: Como desdobrar observações que possuem múltiplos valores salvos em uma mesma linha divididos por ponto e vírgula, gerando novos registros válidos?
+
+**Resposta:**
+A função `separate_rows()` desdobra a string com múltiplos valores em linhas distintas, duplicando os dados das outras colunas correspondentes para manter a integridade cadastral da tabela.
+
+```{r}
+# separate_rows(): Desdobramento de strings com múltiplos valores em novas linhas
+alunos_idiomas_longo <- alunos |>
+  drop_na(idiomas) |>
+  separate_rows(idiomas, sep = ";")
+```
+
+---
+
+### Pergunta 23: Como validar e inspecionar a diferença estrutural (antes e depois) de um registro específico de aluno que passou pela operação de desdobramento?
+
+**Resposta:**
+Podemos aplicar filtros comparativos direcionados para o mesmo identificador (ex: `1001`) comparando a tabela original com a tabela processada por `separate_rows()`.
+
+```{r}
+# Visualizando as diferenças estruturais
+alunos_idiomas_longo |> filter(id_aluno == 1001) |> select(idiomas)
+alunos |> filter(id_aluno == 1001) |> select(idiomas)
+```
+
+---
+
+### Pergunta 24: Como rotacionar colunas da tabela de formato largo (wide) para o formato longo (long), reunindo múltiplos nomes de colunas de variáveis sob um identificador comum?
+
+**Resposta:**
+A função `pivot_longer()` coleta as colunas especificadas no argumento `cols`, converte seus antigos nomes na variável especificada em `names_to` e agrupa os valores observados na coluna definida em `values_to`.
+
+```{r}
+# pivot_longer(): Mudança estrutural de tabela do formato largo para formato longo
+desempenho_longo <- desempenho |>
+  pivot_longer(
+    cols = c(prova_1, prova_2, trabalho, projeto),
+    names_to = "avaliacao_tipo",
+    values_to = "nota"
+  )
+```
+
+---
+
+## PARTE 7: Cruzamento de Tabelas (Joins)
+
+### Pergunta 25: Como fazer a junção externa à esquerda preservando todos os registros cadastrados em uma base de dados prioritária de alunos?
+
+**Resposta:**
+Utilizamos sequencialmente a função `left_join()`. Esse tipo de junção garante que todas as linhas contidas na primeira tabela (`alunos`) permaneçam inalteradas na base resultante, preenchendo com nulos apenas os dados não localizados nas tabelas agregadas.
+
+```{r}
+# Junção externa à esquerda preservando todos os registros da base principal
+alunos_notas_financas <- alunos |>
+  left_join(desempenho, by = c("id_aluno", "curso_id")) |>
+  left_join(pagamentos, by = "id_aluno")
+```
+
+---
+
+### Pergunta 26: Como realizar uma junção de filtragem de modo a extrair apenas os registros da primeira base que NÃO possuem correspondente de chave associado na segunda tabela?
+
+**Resposta:**
+A função `anti_join()` avalia as chaves correspondentes e retém unicamente os registros órfãos ou inconsistentes cadastrados na tabela à esquerda (primeiro argumento) que não possuem dados de correspondência na tabela da direita (segundo argumento).
+
+```{r}
+# Junção de filtragem para identificar inconsistências cadastrais entre tabelas
+alunos_inconsistentes <- alunos |>
+  anti_join(pagamentos, by = "id_aluno")
+```
+
+
