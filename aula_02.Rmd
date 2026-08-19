@@ -1,0 +1,36 @@
+---
+title: "aula_02"
+author: "Mateus Silva Rocha"
+date: "2026-08-18"
+output: html_document
+---
+
+```{r}
+
+install.packages("tidyverse")
+install.packages("readxl")
+
+```
+
+```{r}
+library(tidyverse)
+library(readxl)
+```
+
+```{r}
+
+alunos = read_delim("dados/alunos.txt", delim = " ", na = c("NA", ""))
+desempenho = read_csv("dados/desempenho.csv", na =c("NA",""))
+pagamento = read_excel("dados/pagamentos.xlsx")
+
+```
+
+
+
+```{r}
+
+View(alunos)
+
+```
+
+

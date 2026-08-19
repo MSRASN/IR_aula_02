@@ -34,11 +34,18 @@ View(pagamentos)
 # ------------------------------------------------------------------------------
 
 # Seleção de colunas usando funções auxiliares (tidyselect)
-alunos_contatos <- alunos |>
-  select(id_aluno, nome, starts_with("fone_"), email)
+alunos |>
+  select(id_aluno, nome, starts_with("fone_"), "email")
+
+
 
 # Filtragem de linhas com base em múltiplos operadores lógicos e vetoriais
-alunos_ativos_nordeste <- alunos |>
+
+alunos |> filter(situacao == "Ativo" & 
+                   estado %in% c("PE", "PB", "BA")  )
+
+
+alunos |>
   filter(
     situacao == "Ativo",
     estado %in% c("PE", "PB", "BA"),
@@ -57,11 +64,21 @@ desempenho_estudo <- desempenho |>
 desempenho_media <- desempenho |>
   mutate(media_provas = (prova_1 + prova_2) / 2)
 
+
+
+if(FALSE){
+print("OLA MUNDO")
+} else{
+  print("ola mundo")
+}
+
+
 # Criação de variável categórica binária usando if_else()
 desempenho_categoria <- desempenho_media |>
   mutate(
     status_prova = if_else(media_provas >= 7.0, "Acima da Media", "Abaixo da Media")
   )
+
 
 # Criação de variável categórica múltipla usando case_when()
 desempenho_perfil <- desempenho |>
@@ -85,8 +102,10 @@ relatorio_cursos <- desempenho |>
     media_projeto = mean(projeto, na.rm = TRUE),
     mediana_horas = median(horas_estudo, na.rm = TRUE),
     desvio_padrao_trabalho = sd(trabalho, na.rm = TRUE),
-    .groups = "drop"
-  )
+  ) |>
+  ungroup()
+
+
 
 
 desempenho |> 
@@ -106,12 +125,13 @@ desempenho |>
   ) |> 
   select(id_aluno, curso_id, projeto, media_projeto_curso, desvio_da_media)
 
+
 # agora imagine que quero pegar apenas os alunos que possuem uma nota maior que a média em cada curso
 
 desempenho |> 
   group_by(curso_id) |> 
   mutate(media_projeto_curso = mean(projeto, na.rm = TRUE)) |>
-  filter(projeto > mean(projeto, na.rm = TRUE)) |>
+  filter(projeto > media_projeto_curso) |>
   select(id_aluno,projeto,media_projeto_curso)
  
 # e se eu quiser o aluno com a maior nota em cada curso?
@@ -137,16 +157,28 @@ desempenho |>
   arrange(curso_id) |> 
   ungroup()
 
+
+
 # ------------------------------------------------------------------------------
 # PARTE 5: TRANSFORMAÇÕES EM ESCALA (across)
 # ------------------------------------------------------------------------------
+
+nome_funcao = function(x){
+  x
+}
+
+nome_funcao = function(x) x
+
+nome_funcao = \(x)x
+
+nome_funcao(10)
 
 # Aplicação de funções em lote para imputar valores ausentes e arredondar notas
 desempenho_tratado <- desempenho |>
   mutate(
     across(
       c(prova_1, prova_2, trabalho, projeto),
-      ~ round(replace_na(.x, 0), 1)
+      ~ round(replace_na(.x,0), 1)
     )
   )
 
@@ -165,6 +197,10 @@ desempenho |>
   mutate( 
     across(c(prova_1,prova_2), tratar_nota_custom)
     )
+
+desempenho$comportamento_frequencia
+
+desempenho |> select(comportamento_frequencia)
 
 # ------------------------------------------------------------------------------
 # PARTE 6: HIGIENIZAÇÃO E REESTRUTURAÇÃO DE STRINGS (tidyr)
@@ -205,6 +241,8 @@ pagamentos_extraidos <- pagamentos |>
 alunos_idiomas_longo <- alunos |>
   drop_na(idiomas) |>
   separate_rows(idiomas, sep = ";")
+
+alunos$idiomas
 
 #visualizando
 alunos_idiomas_longo |> filter(id_aluno == 1001) |> select(idiomas)
